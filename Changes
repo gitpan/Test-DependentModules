@@ -1,0 +1,35 @@
+0.04   2009-12-12
+
+- Renamed to Test::DependentModules, since as Jesse Luehrs pointed out, we're
+  not testing our dependencies, we're testing things that depend on us.
+
+- All environment variables names starting with PERL_TEST_MD now start with
+  PERL_TEST_DM.
+
+- In some weird inexplicable case, testing a module seemed to somehow trigger
+  File::Temp's cleanup routine too early, deleting the temp dir containing
+  temporary prereq installations. Test::MyDeps now manages its temp dir
+  manually.
+
+- Changed how logging works. There are now three log files created, and you
+  specify a log _directory_, not a file, via the
+
+
+0.03   2009-12-12
+
+- Added missing prereq on IO::Handle::Util
+
+
+0.02   2009-12-12
+
+- Fixed test_all_my_deps so the exclude parameter actually works.
+
+- The PERL5LIB var did not include the temp dir containing temporarily
+  installed second+ level depenencies.
+
+- Renamed the TEST_PERL_MD_CPAN_VERBOSE env var to PERL_TEST_MD_CPAN_VERBOSE.
+
+
+0.01   2009-12-12
+
+- First version, released on an unsuspecting world.

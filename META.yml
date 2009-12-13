@@ -1,0 +1,36 @@
+---
+abstract: 'Test all modules which depend on your module'
+author:
+  - 'Dave Rolsky, E<lt>autarch@urth.orgE<gt>'
+build_requires:
+  Test::More: 0
+configure_requires:
+  Module::Build: 0.35
+generated_by: 'Module::Build version 0.351'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Test-DependentModules
+provides:
+  Test::DependentModules:
+    file: lib/Test/DependentModules.pm
+    version: 0.04
+requires:
+  CPAN: 1.9402
+  CPANDB: 0.12
+  Cwd: 0
+  Exporter: 0
+  File::Path: 0
+  File::Spec: 0
+  File::Temp: 0
+  File::chdir: 0
+  IO::Handle::Util: 0
+  IPC::Run3: 0
+  Test::More: 0
+  autodie: 0
+resources:
+  bugtracker: http://rt.cpan.org/NoAuth/Bugs.html?Dist=Test-DependentModules
+  license: http://dev.perl.org/licenses/
+  repository: http://hg.urth.org/hg/Test-DependentModules
+version: 0.04

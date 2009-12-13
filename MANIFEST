@@ -1,0 +1,16 @@
+Build.PL
+Changes
+lib/Test/DependentModules.pm
+LICENSE
+MANIFEST			This list of files
+META.yml
+README
+t/01-basic.t
+xt/all-my-deps.t
+xt/kwalitee.t
+xt/pod-coverage.t
+xt/pod-spell.t
+xt/pod.t
+xt/two-distros.t
+Makefile.PL
+SIGNATURE    Added here by Module::Build

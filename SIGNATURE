@@ -1,0 +1,38 @@
+This file contains message digests of all files listed in MANIFEST,
+signed via the Module::Signature module, version 0.55.
+
+To verify the content in this distribution, first make sure you have
+Module::Signature installed, then type:
+
+    % cpansign -v
+
+It will check each file's integrity, as well as the signature's
+validity.  If "==> Signature verified OK! <==" is not displayed,
+the distribution may already have been compromised, and you should
+not run its Makefile.PL or Build.PL.
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+SHA1 daa002e1117cadb6fdcb0724729eff79907e4094 Build.PL
+SHA1 65bbe81fe9b28a11e8706b869fb30cd9d82bcb2a Changes
+SHA1 f235ba4160673bcb7c9d58c2f09dbc7fc0efadea LICENSE
+SHA1 8a51a3492b245834b05dff9276e709e103e9a1c3 MANIFEST
+SHA1 cba5e8caf7411e94bd9cb20ac96e312f68d26037 META.yml
+SHA1 30d494bc5d7914f86555873fd9c3a7e66192fb9f Makefile.PL
+SHA1 c00ec5b6dd6a2e71f8afd71d913368caf4960cc3 README
+SHA1 d812d5b12b79ac6a538cfacb3d445e5705bdd707 lib/Test/DependentModules.pm
+SHA1 d61d4b730215d57ce680498d05e4b9a24b8d4840 t/01-basic.t
+SHA1 b1be4fc4dd495a316d0684d69384fa10558330c8 xt/all-my-deps.t
+SHA1 437178b17e5942761ac30bb436dcac115e5adff8 xt/kwalitee.t
+SHA1 2de39a28ec675c5dd71be1cac276a244a9e3fd14 xt/pod-coverage.t
+SHA1 9995a9eeb2fef2aff06ed066cf02aed0d0ab315a xt/pod-spell.t
+SHA1 9bb24d755c9e2fbf5d9b7db34df15637ccd8e3f6 xt/pod.t
+SHA1 472711cbc3c8f29b77ca1143195fe604777d162f xt/two-distros.t
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEARECAAYFAkskSkQACgkQIgMCsV8qvRIV9ACfYMyLTa+MuSfNuZfQJfueM8T1
+zpkAnjXzVpXYMJe7UEpJIipp2OHDzj1s
+=HkBq
+-----END PGP SIGNATURE-----
