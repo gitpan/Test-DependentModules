@@ -2,9 +2,9 @@ NAME
     Test::DependentModules - Test all modules which depend on your module
 
 SYNOPSIS
-      use Test::DependentModules qw( test_all_my_deps );
+      use Test::DependentModules qw( test_all_dependents );
 
-      test_all_my_deps('My::Module');
+      test_all_dependents('My::Module');
 
       # or ...
 
@@ -41,7 +41,7 @@ DESCRIPTION
 FUNCTIONS
     This module optionally exports two functions:
 
-  test_all_my_deps( $module, { exclude => qr/.../ } )
+  test_all_dependents( $module, { exclude => qr/.../ } )
     Given a module name, this function uses `CPANDB' to find all its
     dependencies and test them. It will call the `plan()' function from
     Test::More for you.
