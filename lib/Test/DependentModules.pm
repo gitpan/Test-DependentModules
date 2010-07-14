@@ -1,9 +1,10 @@
 package Test::DependentModules;
+BEGIN {
+  $Test::DependentModules::VERSION = '0.06';
+}
 
 use strict;
 use warnings;
-
-our $VERSION = '0.05';
 
 # CPAN::Reporter spits out random output we don't want, and we don't want to
 # report these tests anyway.
@@ -120,6 +121,13 @@ sub test_module {
     _install_prereqs($dist);
 
     my ( $passed, $output, $stderr ) = _run_tests_for_dir( $dist->dir() );
+
+    $stderr = q{}
+        # A lot of modules seem to have cargo-culted a diag() that looks like
+        # this ...
+        #
+        # Testing Foo::Bar 0.01, Perl 5.00801, /usr/bin/perl
+        if $stderr =~ /\A\# Testing [\w:]+ [^\n]+\Z/;
 
     my $status = $passed && $stderr ? 'WARN' : $passed ? 'PASS' : 'FAIL';
 
@@ -314,13 +322,19 @@ sub _run_tests {
 
 1;
 
-__END__
+# ABSTRACT: Test all modules which depend on your module
+
+
 
 =pod
 
 =head1 NAME
 
 Test::DependentModules - Test all modules which depend on your module
+
+=head1 VERSION
+
+version 0.06
 
 =head1 SYNOPSIS
 
@@ -443,13 +457,18 @@ button on this page: L<http://www.urth.org/~autarch/fs-donation.html>
 
 =head1 AUTHOR
 
-Dave Rolsky, E<lt>autarch@urth.orgE<gt>
+  Dave Rolsky <autarch@urth.org>
 
-=head1 COPYRIGHT & LICENSE
+=head1 COPYRIGHT AND LICENSE
 
-Copyright 2009 Dave Rolsky, All Rights Reserved.
+This software is Copyright (c) 2010 by Dave Rolsky.
 
-This program is free software; you can redistribute it and/or modify it under
-the same terms as Perl itself.
+This is free software, licensed under:
+
+  The Artistic License 2.0
 
 =cut
+
+
+__END__
+

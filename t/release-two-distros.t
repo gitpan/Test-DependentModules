@@ -1,3 +1,11 @@
+
+BEGIN {
+  unless ($ENV{RELEASE_TESTING}) {
+    require Test::More;
+    Test::More::plan(skip_all => 'these tests are for release candidate testing');
+  }
+}
+
 use strict;
 use warnings;
 
@@ -7,7 +15,8 @@ use Test::More;
 plan skip_all => 'Make $ENV{TDM_HACK_TESTS} true to run this test'
     unless $ENV{TDM_HACK_TESTS};
 
-plan tests => 2;
 
 test_module('Exception::Class');
 test_module('CPAN::Test::Dummy::Perl5::Build::Fails');
+
+done_testing();

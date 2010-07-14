@@ -1,0 +1,58 @@
+{
+   "abstract" : "Test all modules which depend on your module",
+   "author" : [
+      "Dave Rolsky <autarch@urth.org>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Dist::Zilla version 4.101900, CPAN::Meta::Converter version 2.101670",
+   "license" : [
+      "artistic_2"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Test-DependentModules",
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "ExtUtils::MakeMaker" : "6.31"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "CPAN" : "1.9402",
+            "CPANDB" : "0.12",
+            "Cwd" : 0,
+            "Exporter" : 0,
+            "File::Path" : 0,
+            "File::Spec" : 0,
+            "File::Temp" : 0,
+            "File::chdir" : 0,
+            "IO::Handle::Util" : 0,
+            "IPC::Run3" : 0,
+            "Test::More" : 0,
+            "autodie" : 0
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Test::More" : "0.88"
+         }
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "bugtracker" : {
+         "mailto" : "bug-test-dependentmodules@rt.cpan.org",
+         "web" : "http://rt.cpan.org/NoAuth/Bugs.html?Dist=Test-DependentModules"
+      },
+      "repository" : {
+         "type" : "hg",
+         "url" : "http://hg.urth.org/hg/Test-DependentModules",
+         "web" : "http://hg.urth.org/hg/Test-DependentModules"
+      }
+   },
+   "version" : "0.06"
+}
+

@@ -1,16 +1,20 @@
-Build.PL
 Changes
-lib/Test/DependentModules.pm
+INSTALL
 LICENSE
-MANIFEST			This list of files
+MANIFEST
+META.json
 META.yml
-README
-t/01-basic.t
-xt/all-my-deps.t
-xt/kwalitee.t
-xt/pod-coverage.t
-xt/pod-spell.t
-xt/pod.t
-xt/two-distros.t
 Makefile.PL
-SIGNATURE    Added here by Module::Build
+README
+SIGNATURE
+dist.ini
+lib/Test/DependentModules.pm
+t/01-basic.t
+t/release-all-my-deps.t
+t/release-eol.t
+t/release-kwalitee.t
+t/release-no-tabs.t
+t/release-pod-coverage.t
+t/release-pod-spell.t
+t/release-pod-syntax.t
+t/release-two-distros.t
