@@ -1,6 +1,6 @@
 package Test::DependentModules;
 BEGIN {
-  $Test::DependentModules::VERSION = '0.06';
+  $Test::DependentModules::VERSION = '0.07';
 }
 
 use strict;
@@ -131,7 +131,7 @@ sub test_module {
 
     my $status = $passed && $stderr ? 'WARN' : $passed ? 'PASS' : 'FAIL';
 
-    my $summary = "$status: $name - " . $dist->base_id();
+    my $summary = "$status: $name - " . $dist->base_id() . ' - ' . $dist->author()->id();
 
     print { _status_log() } "$summary\n";
     print { _error_log() } "$summary\n";
@@ -334,7 +334,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.06
+version 0.07
 
 =head1 SYNOPSIS
 

@@ -29,4 +29,4 @@ requires:
 resources:
   bugtracker: http://rt.cpan.org/NoAuth/Bugs.html?Dist=Test-DependentModules
   repository: http://hg.urth.org/hg/Test-DependentModules
-version: 0.06
+version: 0.07
