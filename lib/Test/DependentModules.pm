@@ -1,6 +1,6 @@
 package Test::DependentModules;
 BEGIN {
-  $Test::DependentModules::VERSION = '0.07';
+  $Test::DependentModules::VERSION = '0.08';
 }
 
 use strict;
@@ -11,8 +11,6 @@ use warnings;
 BEGIN { $INC{'CPAN/Reporter.pm'} = 0 }
 
 use autodie;
-use CPAN;
-use CPAN::Shell;
 use CPANDB;
 use Cwd qw( abs_path );
 use Exporter qw( import );
@@ -23,43 +21,7 @@ use File::Temp qw( tempdir );
 use IPC::Run3 qw( run3 );
 use Test::More;
 
-our @EXPORT_OK = qw( test_all_dependents test_module );
-
-# By default, when CPAN is told to be silent, it sends output to a log
-# file. We don't want that to happen.
-BEGIN
-{
-    $CPAN::Be_Silent = 1;
-
-    package
-        CPAN::Shell;
-
-    use IO::Handle::Util qw( io_from_write_cb );
-
-    no warnings 'redefine';
-
-    my $fh;
-    if ( $ENV{PERL_TEST_DM_CPAN_VERBOSE} ) {
-        $fh = io_from_write_cb( sub { Test::More::diag( $_[0] ) } );
-    }
-    else {
-        open $fh, '>', File::Spec->devnull();
-    }
-
-    sub report_fh {$fh}
-}
-
-CPAN::HandleConfig->load();
-CPAN::Shell::setup_output();
-CPAN::Index->reload();
-
-$CPAN::Config->{test_report} = 0;
-$CPAN::Config->{mbuildpl_arg} .= ' --quiet';
-$CPAN::Config->{prerequisites_policy} = 'follow';
-$CPAN::Config->{make_install_make_command}    =~ s/^sudo //;
-$CPAN::Config->{mbuild_install_build_command} =~ s/^sudo //;
-$CPAN::Config->{make_install_arg} =~ s/UNINST=1//;
-$CPAN::Config->{mbuild_install_arg} =~s /--uninst\s+1//;
+our @EXPORT_OK = qw( test_all_dependents test_module test_modules );
 
 $ENV{PERL5LIB} = join q{:}, ( $ENV{PERL5LIB} || q{} ),
     File::Spec->catdir( _temp_lib_dir(), 'lib', 'perl5' );
@@ -70,11 +32,13 @@ sub test_all_dependents {
     my $module = shift;
     my $params = shift;
 
+    _load_cpan();
+
     my @deps = _get_deps( $module, $params );
 
     plan tests => scalar @deps;
 
-    test_module($_) for @deps;
+    test_modules(@deps);
 }
 
 sub _get_deps {
@@ -100,8 +64,47 @@ sub _get_deps {
         map { $_->distribution() } @deps;
 }
 
+sub test_modules {
+    _load_cpan();
+
+    if (   $ENV{PERL_TEST_DM_PROCESSES}
+        && $ENV{PERL_TEST_DM_PROCESSES} > 1
+        && eval { require Parallel::ForkManager } ) {
+
+        my $pm = Parallel::ForkManager->new( $ENV{PERL_TEST_DM_PROCESSES} );
+
+        $pm->run_on_finish(
+            sub {
+                shift;    # pid
+                shift;    # program exit code
+                shift;    # ident
+                shift;    # exit signal
+                shift;    # core dump
+                my $results = shift;
+
+                _test_report(
+                    @{$results}{qw( name passed summary output stderr )} );
+            }
+        );
+
+        for my $module (@_) {
+            $pm->start() and next;
+
+            test_module( $module, $pm );
+        }
+
+        $pm->wait_all_children();
+    }
+    else {
+        test_module($_) for @_;
+    }
+}
+
 sub test_module {
     my $name = shift;
+    my $pm   = shift;
+
+    _load_cpan();
 
     $name =~ s/-/::/g;
 
@@ -132,6 +135,29 @@ sub test_module {
     my $status = $passed && $stderr ? 'WARN' : $passed ? 'PASS' : 'FAIL';
 
     my $summary = "$status: $name - " . $dist->base_id() . ' - ' . $dist->author()->id();
+
+    if ($pm) {
+        $pm->finish(
+            0, {
+                name    => $name,
+                passed  => $passed,
+                summary => $summary,
+                output  => $output,
+                stderr  => $stderr,
+            }
+        );
+    }
+    else {
+        _test_report( $name, $passed, $summary, $output, $stderr );
+    }
+}
+
+sub _test_report {
+    my $name    = shift;
+    my $passed  = shift;
+    my $summary = shift;
+    my $output  = shift;
+    my $stderr  = shift;
 
     print { _status_log() } "$summary\n";
     print { _error_log() } "$summary\n";
@@ -320,6 +346,64 @@ sub _run_tests {
     return ( $passed, $output, $error );
 }
 
+{
+    my $LOADED_CPAN = 0;
+
+    # By default, when CPAN is told to be silent, it sends output to a log
+    # file. We don't want that to happen.
+    my $monkey_patch = <<'EOF';
+{
+    package
+        CPAN::Shell;
+
+    use IO::Handle::Util qw( io_from_write_cb );
+
+    no warnings 'redefine';
+
+    my $fh;
+    if ( $ENV{PERL_TEST_DM_CPAN_VERBOSE} ) {
+        $fh = io_from_write_cb( sub { Test::More::diag( $_[0] ) } );
+    }
+    else {
+        open $fh, '>', File::Spec->devnull();
+    }
+
+    sub report_fh {$fh}
+}
+EOF
+
+    sub _load_cpan {
+        return if $LOADED_CPAN;
+
+        require CPAN;
+        require CPAN::Shell;
+
+        {
+            local $@;
+            eval $monkey_patch;
+            die $@ if $@;
+        }
+
+        $CPAN::Be_Silent = 1;
+
+        CPAN::HandleConfig->load();
+        CPAN::Shell::setup_output();
+        CPAN::Index->reload();
+
+        $CPAN::Config->{test_report} = 0;
+        $CPAN::Config->{mbuildpl_arg} .= ' --quiet';
+        $CPAN::Config->{prerequisites_policy} = 'follow';
+        $CPAN::Config->{make_install_make_command}    =~ s/^sudo //;
+        $CPAN::Config->{mbuild_install_build_command} =~ s/^sudo //;
+        $CPAN::Config->{make_install_arg}             =~ s/UNINST=1//;
+        $CPAN::Config->{mbuild_install_arg}           =~ s /--uninst\s+1//;
+
+        $LOADED_CPAN = 1;
+
+        return;
+    }
+}
+
 1;
 
 # ABSTRACT: Test all modules which depend on your module
@@ -334,7 +418,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.07
+version 0.08
 
 =head1 SYNOPSIS
 
@@ -368,17 +452,25 @@ tests. If those dependencies in turn have unsatisfied dependencies, they are
 installed into a temporary directory. These second-level (and third-, etc)
 dependencies are I<not> tested.
 
-In order to avoid prompting, this module attempts set
-C<$ENV{PERL_AUTOINSTALL}> to C<--defaultdeps> and sets
-C<$ENV{PERL_MM_USE_DEFAULT}> to a true value.
+In order to avoid prompting, this module sets C<$ENV{PERL_AUTOINSTALL}> to
+C<--defaultdeps> and sets C<$ENV{PERL_MM_USE_DEFAULT}> to a true value.
 
 Nonetheless, some ill-behaved modules will I<still> wait for a
 prompt. Unfortunately, because of the way this module attempts to keep output
 to a minimum, you won't see these prompts. Patches are welcome.
 
+=head2 Running Tests in Parallel
+
+If you're testing a lot of modules, you might benefit from running tests in
+parallel. You'll need to have L<Parallel::ForkManager> installed for this to
+work.
+
+Set the C<$ENV{PERL_TEST_DM_PROCESSES}> env var to a value greater than 1 to
+enable parallel testing.
+
 =head1 FUNCTIONS
 
-This module optionally exports two functions:
+This module optionally exports three functions:
 
 =head2 test_all_dependents( $module, { exclude => qr/.../ } )
 
@@ -393,7 +485,17 @@ against the I<distribution name>, which will be something like "Test-DependentMo
 Additionally, any distribution name starting with "Task" or "Bundle" is always
 excluded.
 
+=head2 test_modules(@names)
+
+Given a list of module names, this function will test them all. You can use
+this if you'd prefer to hard code a list of modules to test.
+
+In this case, you will have to handle your own test planning.
+
 =head2 test_module($name)
+
+B<DEPRECATED>. Use the C<test_modules()> sub instead, so you can run
+optionally run tests in parallel.
 
 Given a module name, this function will test it. You can use this if you'd
 prefer to hard code a list of modules to test.
@@ -457,15 +559,15 @@ button on this page: L<http://www.urth.org/~autarch/fs-donation.html>
 
 =head1 AUTHOR
 
-  Dave Rolsky <autarch@urth.org>
+Dave Rolsky <autarch@urth.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is Copyright (c) 2010 by Dave Rolsky.
+This software is Copyright (c) 2011 by Dave Rolsky.
 
 This is free software, licensed under:
 
-  The Artistic License 2.0
+  The Artistic License 2.0 (GPL Compatible)
 
 =cut
 
