@@ -1,3 +1,13 @@
+0.09   2011-04-12
+
+- Parallel testing caused bad test output when a test was skipped because a
+  module could not be found on CPAN.
+
+- The output from running a distro's Makefile.PL/Build.PL could stomp on the
+  TAP output when running tests in parallel. We now simply close STDOUT when
+  running this step, which is less than ideal, but fixes the breakage.
+
+
 0.08   2011-04-12
 
 - This module can now run tests in parallel if you have Parallel::ForkManager

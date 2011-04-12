@@ -1,10 +1,11 @@
 package Test::DependentModules;
 BEGIN {
-  $Test::DependentModules::VERSION = '0.08';
+  $Test::DependentModules::VERSION = '0.09';
 }
 
 use strict;
 use warnings;
+use autodie;
 
 # CPAN::Reporter spits out random output we don't want, and we don't want to
 # report these tests anyway.
@@ -18,6 +19,7 @@ use File::chdir;
 use File::Path qw( rmtree );
 use File::Spec;
 use File::Temp qw( tempdir );
+use Scope::Guard qw( guard );
 use IPC::Run3 qw( run3 );
 use Test::More;
 
@@ -82,10 +84,9 @@ sub test_modules {
                 shift;    # core dump
                 my $results = shift;
 
-                _test_report(
-                    @{$results}{qw( name passed summary output stderr )} );
-            }
-        );
+                _test_report( @{$results}
+                        {qw( name passed summary output stderr skipped )} );
+            } );
 
         for my $module (@_) {
             $pm->start() and next;
@@ -111,11 +112,16 @@ sub test_module {
     my $dist = _get_distro($name);
 
     unless ($dist) {
-        print { _status_log() } "UNKNOWN : $name (not on CPAN?)\n";
-
-    SKIP:
-        {
-            skip "Could not find $name on CPAN", 1;
+        if ($pm) {
+            $pm->finish(
+                0, {
+                    name    => $name,
+                    skipped => 'skipped',
+                }
+            );
+        }
+        else {
+            _test_report( $name, undef, undef, undef, undef, 'skipped' );
         }
 
         return;
@@ -158,6 +164,18 @@ sub _test_report {
     my $summary = shift;
     my $output  = shift;
     my $stderr  = shift;
+    my $skipped = shift;
+
+    if ($skipped) {
+        print { _status_log() } "UNKNOWN : $name (not on CPAN?)\n";
+
+    SKIP:
+        {
+            skip "Could not find $name on CPAN", 1;
+        }
+
+        return;
+    }
 
     print { _status_log() } "$summary\n";
     print { _error_log() } "$summary\n";
@@ -248,6 +266,15 @@ sub _get_distro {
 sub _install_prereqs {
     my $dist = shift;
 
+    open my $oldout, '>&STDOUT';
+
+    close STDOUT;
+    open STDOUT, '>', File::Spec->devnull();
+
+    my $guard = guard {
+        open STDOUT, '>&', $oldout;
+    };
+
     $dist->make();
 
     my $install_dir = _temp_lib_dir();
@@ -262,20 +289,18 @@ sub _install_prereqs {
         $dist->unsat_prereq('configure_requires_later'),
         $dist->unsat_prereq('later')
         ) {
-        if ( $prereq->[0] eq 'perl' ) {
 
-        }
-        else {
-            my $dist = _get_distro( $prereq->[0] );
-            _install_prereqs($dist);
+        next if $prereq->[0] eq 'perl';
 
-            my $installing = $dist->base_id();
+        my $dist = _get_distro( $prereq->[0] );
+        _install_prereqs($dist);
 
-            print { _prereq_log() } "Installing $installing for $for_dist\n";
+        my $installing = $dist->base_id();
 
-            $dist->notest();
-            $dist->install();
-        }
+        print { _prereq_log() } "Installing $installing for $for_dist\n";
+
+        $dist->notest();
+        $dist->install();
     }
 }
 
@@ -418,7 +443,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.08
+version 0.09
 
 =head1 SYNOPSIS
 
