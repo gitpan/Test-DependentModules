@@ -1,6 +1,6 @@
 package Test::DependentModules;
 BEGIN {
-  $Test::DependentModules::VERSION = '0.10';
+  $Test::DependentModules::VERSION = '0.11';
 }
 
 use strict;
@@ -415,7 +415,7 @@ EOF
 
         CPAN::HandleConfig->load();
         CPAN::Shell::setup_output();
-        CPAN::Index->reload();
+        CPAN::Index->reload('force');
 
         $CPAN::Config->{test_report} = 0;
         $CPAN::Config->{mbuildpl_arg} .= ' --quiet';
@@ -445,7 +445,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.10
+version 0.11
 
 =head1 SYNOPSIS
 
