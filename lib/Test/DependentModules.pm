@@ -1,6 +1,6 @@
 package Test::DependentModules;
 BEGIN {
-  $Test::DependentModules::VERSION = '0.09';
+  $Test::DependentModules::VERSION = '0.10';
 }
 
 use strict;
@@ -126,6 +126,8 @@ sub test_module {
 
         return;
     }
+
+    $name = $dist->base_id();
 
     _install_prereqs($dist);
 
@@ -443,7 +445,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.09
+version 0.10
 
 =head1 SYNOPSIS
 
