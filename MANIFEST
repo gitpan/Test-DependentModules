@@ -6,7 +6,6 @@ META.json
 META.yml
 Makefile.PL
 README
-SIGNATURE
 dist.ini
 lib/Test/DependentModules.pm
 t/01-basic.t
@@ -15,6 +14,8 @@ t/release-cpan-changes.t
 t/release-eol.t
 t/release-no-tabs.t
 t/release-pod-coverage.t
+t/release-pod-linkcheck.t
+t/release-pod-no404s.t
 t/release-pod-spell.t
 t/release-pod-syntax.t
 t/release-two-distros.t
