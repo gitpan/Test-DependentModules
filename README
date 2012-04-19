@@ -1,11 +1,11 @@
 
 
 This archive contains the distribution Test-DependentModules,
-version 0.12:
+version 0.13:
 
   Test all modules which depend on your module
 
-This software is Copyright (c) 2011 by Dave Rolsky.
+This software is Copyright (c) 2012 by Dave Rolsky.
 
 This is free software, licensed under:
 

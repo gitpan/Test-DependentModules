@@ -1,16 +1,36 @@
-0.12   2011-07-20
+0.13   2012-04-19
 
-- Forcibly reload the CPAN index each time this module runs tests. This gives
-  you the best chance of finding the most reecent version of a dependent
-  module.
+- Use MetaCPAN to look up reverse dependencies instead of CPANDB. (doy)
+
+- Silence all of the test running and installing. (doy)
+
+- Avoid dying on avoidable errors (turn them into test fails or skips as
+  appropriate). (doy)
+
+- Use Test::Builder instead of Test::More so $TODO works properly. Also, mark
+  todo tests in the log files. (doy)
+
+- The test_module sub now also initializes the log files. (doy)
+
+- A distro's configure_requires prereqs are now respected. (doy)
+
+
+0.12   2011-07-20
 
 - Logging was broken when using multiple processes. The prereq log file would
   end up appearing under multiple names (potentially one per process), and the
   files were not locked for writing in each process.
 
 - The directory to which prereqs were installed got cleaned out after each
-  process exited when running multiple processes, which often cause false
+  process exited when running multiple processes, which often caused false
   failures for modules being tested.
+
+
+0.11   2011-04-21
+
+- Forcibly reload the CPAN index each time this module runs tests. This gives
+  you the best chance of finding the most reecent version of a dependent
+  module.
 
 
 0.10   2011-04-21

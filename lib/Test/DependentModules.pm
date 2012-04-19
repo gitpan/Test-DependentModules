@@ -1,6 +1,6 @@
 package Test::DependentModules;
-BEGIN {
-  $Test::DependentModules::VERSION = '0.12';
+{
+  $Test::DependentModules::VERSION = '0.13';
 }
 
 use strict;
@@ -11,18 +11,19 @@ use autodie;
 # report these tests anyway.
 BEGIN { $INC{'CPAN/Reporter.pm'} = 0 }
 
-use autodie;
-use CPANDB;
+use Capture::Tiny qw( capture );
 use Cwd qw( abs_path );
 use Exporter qw( import );
-use File::chdir;
 use File::Path qw( rmtree );
 use File::Spec;
 use File::Temp qw( tempdir );
-use Log::Dispatch;
-use Scope::Guard qw( guard );
+use File::chdir;
+use IO::Handle::Util; # used for CPAN::Shell monkey patch
 use IPC::Run3 qw( run3 );
-use Test::More;
+use Log::Dispatch;
+use MetaCPAN::API;
+use Test::Builder;
+use Try::Tiny;
 
 our @EXPORT_OK = qw( test_all_dependents test_module test_modules );
 
@@ -31,16 +32,20 @@ $ENV{PERL5LIB} = join q{:}, ( $ENV{PERL5LIB} || q{} ),
 $ENV{PERL_AUTOINSTALL}    = '--defaultdeps';
 $ENV{PERL_MM_USE_DEFAULT} = 1;
 
+my $Test = Test::Builder->new();
+
 sub test_all_dependents {
     my $module = shift;
     my $params = shift;
 
     _load_cpan();
+    _make_logs();
 
     my @deps = _get_deps( $module, $params );
 
-    plan tests => scalar @deps;
+    $Test->plan( tests => scalar @deps );
 
+    local $Test::Builder::Level = $Test::Builder::Level + 1;
     test_modules(@deps);
 }
 
@@ -50,21 +55,40 @@ sub _get_deps {
 
     $module =~ s/::/-/g;
 
-    my $distro = CPANDB->distribution($module);
-
-    my @deps = CPANDB::Dependency->select(
-        'where dependency = ? and ( core is null or core >= ? )',
-        $module, $]
+    my $result = MetaCPAN::API->new()->post(
+        "/search/reverse_dependencies/$module",
+        {
+            query  => { match_all => {} },
+            size   => 5000,
+            filter => {
+                and => [
+                    {
+                        term => { 'release.status' => 'latest' },
+                    },
+                    {
+                        term => { 'authorized' => 'true' },
+                    },
+                ],
+            },
+        },
     );
+
+    # metacpan requires scrolled queries for requests returning more than 5000
+    # results, i don't think this will actually be a problem
+    if ( $result->{hits}{total} > 5000 ) {
+        $Test->diag(
+                  "Too many reverse dependencies ($result->{hits}{total}), "
+                . "limiting to 5000" );
+    }
+
+    my @deps = map { $_->{_source}{distribution} } @{ $result->{hits}{hits} };
 
     my $allow
         = $params->{exclude}
         ? sub { $_[0] !~ /$params->{exclude}/ }
-        : sub {1};
+        : sub { 1 };
 
-    return grep { $_ !~ /^(?:Task|Bundle)/ }
-        grep    { $allow->($_) }
-        map { $_->distribution() } @deps;
+    return grep { $_ !~ /^(?:Task|Bundle)/ } grep { $allow->($_) } @deps;
 }
 
 sub test_modules {
@@ -89,6 +113,7 @@ sub test_modules {
         _test_in_parallel(@_);
     }
     else {
+        local $Test::Builder::Level = $Test::Builder::Level + 1;
         test_module($_) for @_;
     }
 }
@@ -107,6 +132,7 @@ sub _test_in_parallel {
             shift;    # core dump
             my $results = shift;
 
+            local $Test::Builder::Level = $Test::Builder::Level + 1;
             _test_report( @{$results}
                     {qw( name passed summary output stderr skipped )} );
         }
@@ -115,24 +141,11 @@ sub _test_in_parallel {
     for my $module (@_) {
         $pm->start() and next;
 
+        local $Test::Builder::Level = $Test::Builder::Level + 1;
         test_module( $module, $pm );
     }
 
     $pm->wait_all_children();
-}
-
-sub _load_or_warn {
-    my $module = shift;
-    my $msg    = shift;
-
-    eval "require $module";
-
-    if ( my $e = $@ ) {
-        warn $msg, "\n";
-        return 0;
-    }
-
-    return 1;
 }
 
 sub test_module {
@@ -140,22 +153,35 @@ sub test_module {
     my $pm   = shift;
 
     _load_cpan();
+    _make_logs();
 
     $name =~ s/-/::/g;
 
     my $dist = _get_distro($name);
 
     unless ($dist) {
+        $name =~ s/::/-/g;
+        my $todo
+            = defined( $Test->todo() )
+            ? ' (TODO: ' . $Test->todo() . ')'
+            : '';
+        my $summary = "FAIL${todo}: $name - ??? - ???";
+        my $output  = "Could not find $name on CPAN\n";
         if ($pm) {
             $pm->finish(
-                0, {
+                0,
+                {
                     name    => $name,
-                    skipped => 'skipped',
+                    passed  => 0,
+                    summary => $summary,
+                    output  => $output,
+                    stderr  => $output,
                 }
             );
         }
         else {
-            _test_report( $name, undef, undef, undef, undef, 'skipped' );
+            local $Test::Builder::Level = $Test::Builder::Level + 1;
+            _test_report( $name, 0, $summary, $output, $output, undef );
         }
 
         return;
@@ -163,11 +189,38 @@ sub test_module {
 
     $name = $dist->base_id();
 
-    _install_prereqs($dist);
+    my $success = try {
+        capture { _install_prereqs($dist) };
+        1;
+    }
+    catch {
+        local $Test::Builder::Level = $Test::Builder::Level + 1;
+        my $msg = "Installing prereqs for $name failed: $_";
+        $msg =~ s/\s*$//;
+        $msg =~ s/\n/\t/g;
+        if ($pm) {
+            $pm->finish(
+                0,
+                {
+                    name    => $name,
+                    skipped => $msg,
+                }
+            );
+        }
+        else {
+            local $Test::Builder::Level = $Test::Builder::Level + 1;
+            _test_report( $name, undef, undef, undef, undef, $msg );
+        }
+
+        return;
+    };
+
+    return unless $success;
 
     my ( $passed, $output, $stderr ) = _run_tests_for_dir( $dist->dir() );
 
     $stderr = q{}
+
         # A lot of modules seem to have cargo-culted a diag() that looks like
         # this ...
         #
@@ -175,12 +228,19 @@ sub test_module {
         if $stderr =~ /\A\# Testing [\w:]+ [^\n]+\Z/;
 
     my $status = $passed && $stderr ? 'WARN' : $passed ? 'PASS' : 'FAIL';
+    if ( my $reason = $Test->todo() ) {
+        $status .= " (TODO: $reason)";
+    }
 
-    my $summary = "$status: $name - " . $dist->base_id() . ' - ' . $dist->author()->id();
+    my $summary
+        = "$status: $name - "
+        . $dist->base_id() . ' - '
+        . $dist->author()->id();
 
     if ($pm) {
         $pm->finish(
-            0, {
+            0,
+            {
                 name    => $name,
                 passed  => $passed,
                 summary => $summary,
@@ -190,6 +250,7 @@ sub test_module {
         );
     }
     else {
+        local $Test::Builder::Level = $Test::Builder::Level + 1;
         _test_report( $name, $passed, $summary, $output, $stderr );
     }
 }
@@ -203,28 +264,26 @@ sub _test_report {
     my $skipped = shift;
 
     if ($skipped) {
-        _status_log("UNKNOWN : $name (not on CPAN?)\n");
+        _status_log("UNKNOWN: $name ($skipped)\n");
+        _error_log("UNKNOWN: $name ($skipped)\n");
 
-    SKIP:
-        {
-            skip "Could not find $name on CPAN", 1;
-        }
+        $Test->diag("Skipping $name: $skipped");
+        $Test->skip($skipped);
+    }
+    else {
+        _status_log("$summary\n");
+        _error_log("$summary\n");
 
-        return;
+        $Test->ok( $passed, "$name passed all tests" );
     }
 
-    _status_log("$summary\n");
-    _error_log("$summary\n");
-
-    ok( $passed, "$name passed all tests" );
-
-    if ( $passed && !$stderr ) {
+    if ( $passed || $skipped ) {
         _error_log("\n");
     }
     else {
         _error_log( q{-} x 50 );
         _error_log("\n");
-        _error_log("$output\n");
+        _error_log("$output\n") if defined $output;
     }
 }
 
@@ -232,6 +291,8 @@ sub _test_report {
     my %logs;
 
     sub _make_logs {
+        return if %logs;
+
         my $file_class = $ENV{PERL_TEST_DM_PROCESSES}
             && $ENV{PERL_TEST_DM_PROCESSES} > 1 ? 'File::Locked' : 'File';
 
@@ -279,12 +340,11 @@ sub _get_distro {
 
     my @mods = CPAN::Shell->expand( 'Module', $name );
 
-    die "Cannot resolve $name to a single CPAN module"
-        if @mods > 1;
-
-    return unless @mods;
+    return unless @mods == 1;
 
     my $dist = $mods[0]->distribution();
+
+    return unless $dist;
 
     $dist->get();
 
@@ -294,17 +354,6 @@ sub _get_distro {
 sub _install_prereqs {
     my $dist = shift;
 
-    open my $oldout, '>&STDOUT';
-
-    close STDOUT;
-    open STDOUT, '>', File::Spec->devnull();
-
-    my $guard = guard {
-        open STDOUT, '>&', $oldout;
-    };
-
-    $dist->make();
-
     my $install_dir = _temp_lib_dir();
 
     local $CPAN::Config->{makepl_arg} .= " INSTALL_BASE=$install_dir";
@@ -313,23 +362,47 @@ sub _install_prereqs {
 
     my $for_dist = $dist->base_id();
 
-    for my $prereq (
-        $dist->unsat_prereq('configure_requires_later'),
-        $dist->unsat_prereq('later')
-        ) {
+    for my $prereq ( $dist->unsat_prereq('configure_requires_later') ) {
+        _install_prereq( $prereq->[0], $for_dist );
+    }
 
-        next if $prereq->[0] eq 'perl';
+    # XXX basically just making this up (because the CPAN.pm source is
+    # impossible to follow), but ->make doesn't actually do anything if these
+    # keys exist
+    delete $dist->{configure_requires_later};
+    delete $dist->{configure_requires_later_for};
 
-        my $dist = _get_distro( $prereq->[0] );
-        _install_prereqs($dist);
+    $dist->make();
 
-        my $installing = $dist->base_id();
+    for my $prereq ( $dist->unsat_prereq('later') ) {
+        _install_prereq( $prereq->[0], $for_dist );
+    }
+}
 
-        _prereq_log( "Installing $installing for $for_dist\n" );
+sub _install_prereq {
+    my ( $prereq, $for_dist ) = @_;
 
+    return if $prereq eq 'perl';
+
+    my $dist = _get_distro($prereq);
+    if ( !$dist ) {
+        _prereq_log("Couldn't find $prereq for $for_dist\n");
+        next;
+    }
+
+    _install_prereqs($dist);
+
+    my $installing = $dist->base_id();
+
+    _prereq_log("Installing $installing for $for_dist\n");
+
+    try {
         $dist->notest();
         $dist->install();
     }
+    catch {
+        die "Installing $installing for $for_dist failed: $_";
+    };
 }
 
 {
@@ -366,7 +439,15 @@ sub _run_commands {
     for my $cmd (@_) {
         my $output;
 
-        unless ( run3 $cmd, \undef, \$output, \$output ) {
+        my $success = try {
+            run3 $cmd, \undef, \$output, \$output;
+        }
+        catch {
+            $output .= "Couldn't run @$cmd: $_";
+            return;
+        };
+
+        if ( !$success ) {
             return ( 0, $output );
         }
     }
@@ -385,12 +466,22 @@ sub _run_tests {
         $error  .= $line;
     };
 
+    my $cmd;
     if ( -f 'Build.PL' ) {
-        run3 [qw( ./Build test )], undef, \$output, $stderr;
+        $cmd = [qw( ./Build test )];
     }
     else {
-        run3 [qw( make test )], undef, \$output, $stderr;
+        $cmd = [qw( make test )];
     }
+
+    try {
+        run3 $cmd, undef, \$output, $stderr;
+    }
+    catch {
+        $output .= "Couldn't run @$cmd: $_";
+        $error  .= "Couldn't run @$cmd: $_";
+        return;
+    };
 
     my $passed = $output =~ /Result: PASS/;
 
@@ -469,7 +560,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.12
+version 0.13
 
 =head1 SYNOPSIS
 
@@ -525,8 +616,8 @@ This module optionally exports three functions:
 
 =head2 test_all_dependents( $module, { exclude => qr/.../ } )
 
-Given a module name, this function uses C<CPANDB> to find all its dependencies
-and test them. It will call the C<plan()> function from L<Test::More> for you.
+Given a module name, this function uses L<MetaCPAN::API> to find all its
+dependencies and test them. It will set a test plan for you.
 
 If you want to exclude some dependencies, you can pass a regex which will be
 used to exclude any matching distributions. Note that this will be tested
@@ -614,7 +705,7 @@ Dave Rolsky <autarch@urth.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is Copyright (c) 2011 by Dave Rolsky.
+This software is Copyright (c) 2012 by Dave Rolsky.
 
 This is free software, licensed under:
 

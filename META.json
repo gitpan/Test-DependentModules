@@ -4,7 +4,7 @@
       "Dave Rolsky <autarch@urth.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.200012, CPAN::Meta::Converter version 2.110930",
+   "generated_by" : "Dist::Zilla version 4.300014, CPAN::Meta::Converter version 2.120900",
    "license" : [
       "artistic_2"
    ],
@@ -25,19 +25,23 @@
          },
          "requires" : {
             "CPAN" : "1.9402",
-            "CPANDB" : "0.12",
-            "Cwd" : 0,
-            "Exporter" : 0,
-            "File::Path" : 0,
-            "File::Spec" : 0,
-            "File::Temp" : 0,
-            "File::chdir" : 0,
-            "IO::Handle::Util" : 0,
-            "IPC::Run3" : 0,
-            "Log::Dispatch" : 0,
-            "Scope::Guard" : 0,
-            "Test::More" : 0,
-            "autodie" : 0
+            "CPAN::Shell" : "0",
+            "Capture::Tiny" : "0",
+            "Cwd" : "0",
+            "Exporter" : "0",
+            "File::Path" : "0",
+            "File::Spec" : "0",
+            "File::Temp" : "0",
+            "File::chdir" : "0",
+            "IO::Handle::Util" : "0",
+            "IPC::Run3" : "0",
+            "Log::Dispatch" : "0",
+            "MetaCPAN::API" : "0",
+            "Test::Builder" : "0",
+            "Try::Tiny" : "0",
+            "autodie" : "0",
+            "strict" : "0",
+            "warnings" : "0"
          }
       },
       "test" : {
@@ -58,6 +62,6 @@
          "web" : "http://git.urth.org/Test-DependentModules.git"
       }
    },
-   "version" : "0.12"
+   "version" : "0.13"
 }
 
