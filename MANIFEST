@@ -10,6 +10,7 @@ dist.ini
 lib/Test/DependentModules.pm
 t/01-basic.t
 t/release-all-my-deps.t
+t/release-configure-requires.t
 t/release-cpan-changes.t
 t/release-eol.t
 t/release-no-tabs.t

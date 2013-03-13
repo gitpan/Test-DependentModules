@@ -1,6 +1,6 @@
 package Test::DependentModules;
 {
-  $Test::DependentModules::VERSION = '0.13';
+  $Test::DependentModules::VERSION = '0.14';
 }
 
 use strict;
@@ -114,7 +114,9 @@ sub test_modules {
     }
     else {
         local $Test::Builder::Level = $Test::Builder::Level + 1;
-        test_module($_) for @_;
+        for my $module (@_) {
+            test_module($_);
+        }
     }
 }
 
@@ -440,16 +442,15 @@ sub _run_commands {
         my $output;
 
         my $success = try {
-            run3 $cmd, \undef, \$output, \$output;
+            run3( $cmd, \undef, \$output, \$output );
         }
         catch {
             $output .= "Couldn't run @$cmd: $_";
             return;
         };
 
-        if ( !$success ) {
-            return ( 0, $output );
-        }
+        return ( 0, $output )
+            unless $success;
     }
 
     return 1;
@@ -467,15 +468,18 @@ sub _run_tests {
     };
 
     my $cmd;
-    if ( -f 'Build.PL' ) {
+    if ( -f 'Build' ) {
         $cmd = [qw( ./Build test )];
     }
-    else {
+    elsif ( -f 'Makefile' ) {
         $cmd = [qw( make test )];
+    }
+    else {
+        return ( 0, "Cannot find a Build or Makefile file in $CWD" );
     }
 
     try {
-        run3 $cmd, undef, \$output, $stderr;
+        run3( $cmd, undef, \$output, $stderr );
     }
     catch {
         $output .= "Couldn't run @$cmd: $_";
@@ -550,7 +554,7 @@ EOF
 
 # ABSTRACT: Test all modules which depend on your module
 
-
+__END__
 
 =pod
 
@@ -560,7 +564,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.13
+version 0.14
 
 =head1 SYNOPSIS
 
@@ -705,14 +709,10 @@ Dave Rolsky <autarch@urth.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is Copyright (c) 2012 by Dave Rolsky.
+This software is Copyright (c) 2013 by Dave Rolsky.
 
 This is free software, licensed under:
 
   The Artistic License 2.0 (GPL Compatible)
 
 =cut
-
-
-__END__
-
