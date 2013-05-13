@@ -8,7 +8,9 @@ Makefile.PL
 README
 dist.ini
 lib/Test/DependentModules.pm
+t/00-compile.t
 t/01-basic.t
+t/author-pod-spell.t
 t/release-all-my-deps.t
 t/release-configure-requires.t
 t/release-cpan-changes.t

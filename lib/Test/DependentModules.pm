@@ -1,6 +1,9 @@
 package Test::DependentModules;
 {
-  $Test::DependentModules::VERSION = '0.14';
+  $Test::DependentModules::VERSION = '0.15';
+}
+BEGIN {
+  $Test::DependentModules::AUTHORITY = 'cpan:DROLSKY';
 }
 
 use strict;
@@ -115,7 +118,7 @@ sub test_modules {
     else {
         local $Test::Builder::Level = $Test::Builder::Level + 1;
         for my $module (@_) {
-            test_module($_);
+            test_module($module);
         }
     }
 }
@@ -221,13 +224,12 @@ sub test_module {
 
     my ( $passed, $output, $stderr ) = _run_tests_for_dir( $dist->dir() );
 
+    # A lot of modules seem to have cargo-culted a diag() that looks like this
+    # ...
+    #
+    # Testing Foo::Bar 0.01, Perl 5.00801, /usr/bin/perl
     $stderr = q{}
-
-        # A lot of modules seem to have cargo-culted a diag() that looks like
-        # this ...
-        #
-        # Testing Foo::Bar 0.01, Perl 5.00801, /usr/bin/perl
-        if $stderr =~ /\A\# Testing [\w:]+ [^\n]+\Z/;
+        if defined $stderr && $stderr =~ /\A\# Testing [\w:]+ [^\n]+\Z/;
 
     my $status = $passed && $stderr ? 'WARN' : $passed ? 'PASS' : 'FAIL';
     if ( my $reason = $Test->todo() ) {
@@ -564,7 +566,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.14
+version 0.15
 
 =head1 SYNOPSIS
 
