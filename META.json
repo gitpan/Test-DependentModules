@@ -13,6 +13,11 @@
       "version" : "2"
    },
    "name" : "Test-DependentModules",
+   "no_index" : {
+      "directory" : [
+         "corpus"
+      ]
+   },
    "prereqs" : {
       "configure" : {
          "requires" : {
@@ -76,7 +81,7 @@
          "web" : "http://git.urth.org/Test-DependentModules.git"
       }
    },
-   "version" : "0.16",
+   "version" : "0.17",
    "x_authority" : "cpan:DROLSKY"
 }
 

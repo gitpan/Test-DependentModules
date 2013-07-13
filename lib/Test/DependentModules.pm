@@ -1,6 +1,6 @@
 package Test::DependentModules;
 {
-  $Test::DependentModules::VERSION = '0.16';
+  $Test::DependentModules::VERSION = '0.17';
 }
 BEGIN {
   $Test::DependentModules::AUTHORITY = 'cpan:DROLSKY';
@@ -567,7 +567,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.16
+version 0.17
 
 =head1 SYNOPSIS
 
