@@ -4,7 +4,7 @@
       "Dave Rolsky <autarch@urth.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.300034, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Dist::Zilla version 4.300035, CPAN::Meta::Converter version 2.131560",
    "license" : [
       "artistic_2"
    ],
@@ -54,7 +54,11 @@
       },
       "test" : {
          "requires" : {
+            "ExtUtils::MakeMaker" : "0",
+            "File::Copy::Recursive" : "0",
             "File::Find" : "0",
+            "Module::Build" : "0",
+            "Module::Build::Tiny" : "0",
             "Test::More" : "0.88"
          }
       }
@@ -72,7 +76,7 @@
          "web" : "http://git.urth.org/Test-DependentModules.git"
       }
    },
-   "version" : "0.15",
+   "version" : "0.16",
    "x_authority" : "cpan:DROLSKY"
 }
 

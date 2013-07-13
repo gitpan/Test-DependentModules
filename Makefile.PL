@@ -40,10 +40,14 @@ my %WriteMakefileArgs = (
     "warnings" => 0
   },
   "TEST_REQUIRES" => {
+    "ExtUtils::MakeMaker" => 0,
+    "File::Copy::Recursive" => 0,
     "File::Find" => 0,
+    "Module::Build" => 0,
+    "Module::Build::Tiny" => 0,
     "Test::More" => "0.88"
   },
-  "VERSION" => "0.15",
+  "VERSION" => "0.16",
   "test" => {
     "TESTS" => "t/*.t"
   }

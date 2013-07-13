@@ -1,6 +1,6 @@
 package Test::DependentModules;
 {
-  $Test::DependentModules::VERSION = '0.15';
+  $Test::DependentModules::VERSION = '0.16';
 }
 BEGIN {
   $Test::DependentModules::AUTHORITY = 'cpan:DROLSKY';
@@ -480,16 +480,17 @@ sub _run_tests {
         return ( 0, "Cannot find a Build or Makefile file in $CWD" );
     }
 
+    my $passed;
     try {
         run3( $cmd, undef, \$output, $stderr );
+        if ($? == 0) {
+            $passed = $output =~ /Result: (?:PASS|NOTESTS)|No tests defined/;
+        }
     }
     catch {
         $output .= "Couldn't run @$cmd: $_";
         $error  .= "Couldn't run @$cmd: $_";
-        return;
     };
-
-    my $passed = $output =~ /Result: PASS/;
 
     return ( $passed, $output, $error );
 }
@@ -566,7 +567,7 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.15
+version 0.16
 
 =head1 SYNOPSIS
 
