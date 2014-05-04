@@ -1,11 +1,5 @@
 package Test::DependentModules;
-{
-  $Test::DependentModules::VERSION = '0.17';
-}
-BEGIN {
-  $Test::DependentModules::AUTHORITY = 'cpan:DROLSKY';
-}
-
+$Test::DependentModules::VERSION = '0.18';
 use strict;
 use warnings;
 use autodie;
@@ -21,7 +15,7 @@ use File::Path qw( rmtree );
 use File::Spec;
 use File::Temp qw( tempdir );
 use File::chdir;
-use IO::Handle::Util; # used for CPAN::Shell monkey patch
+use IO::Handle::Util qw( io_from_write_cb );
 use IPC::Run3 qw( run3 );
 use Log::Dispatch;
 use MetaCPAN::API;
@@ -138,8 +132,9 @@ sub _test_in_parallel {
             my $results = shift;
 
             local $Test::Builder::Level = $Test::Builder::Level + 1;
-            _test_report( @{$results}
-                    {qw( name passed summary output stderr skipped )} );
+            _test_report(
+                @{$results}{qw( name passed summary output stderr skipped )}
+            );
         }
     );
 
@@ -169,7 +164,7 @@ sub test_module {
         my $todo
             = defined( $Test->todo() )
             ? ' (TODO: ' . $Test->todo() . ')'
-            : '';
+            : q{};
         my $summary = "FAIL${todo}: $name - ??? - ???";
         my $output  = "Could not find $name on CPAN\n";
         if ($pm) {
@@ -370,17 +365,14 @@ sub _install_prereqs {
         _install_prereq( $prereq->[0], $for_dist );
     }
 
-    # XXX basically just making this up (because the CPAN.pm source is
-    # impossible to follow), but ->make doesn't actually do anything if these
-    # keys exist
-    delete $dist->{configure_requires_later};
-    delete $dist->{configure_requires_later_for};
-
+    $dist->undelay();
     $dist->make();
 
     for my $prereq ( $dist->unsat_prereq('later') ) {
         _install_prereq( $prereq->[0], $for_dist );
     }
+
+    $dist->undelay();
 }
 
 sub _install_prereq {
@@ -483,8 +475,9 @@ sub _run_tests {
     my $passed;
     try {
         run3( $cmd, undef, \$output, $stderr );
-        if ($? == 0) {
-            $passed = $output =~ /Result: (?:PASS|NOTESTS)|No tests defined/;
+        if ( $? == 0 ) {
+            $passed = $output eq q{}
+                || $output =~ /Result: (?:PASS|NOTESTS)|No tests defined/;
         }
     }
     catch {
@@ -498,39 +491,18 @@ sub _run_tests {
 {
     my $LOADED_CPAN = 0;
 
-    # By default, when CPAN is told to be silent, it sends output to a log
-    # file. We don't want that to happen.
-    my $monkey_patch = <<'EOF';
-{
-    package
-        CPAN::Shell;
-
-    use IO::Handle::Util qw( io_from_write_cb );
-
-    no warnings 'redefine';
-
-    my $fh;
-    if ( $ENV{PERL_TEST_DM_CPAN_VERBOSE} ) {
-        $fh = io_from_write_cb( sub { Test::More::diag( $_[0] ) } );
-    }
-    else {
-        open $fh, '>', File::Spec->devnull();
-    }
-
-    sub report_fh {$fh}
-}
-EOF
-
     sub _load_cpan {
+        no warnings 'once';
         return if $LOADED_CPAN;
 
         require CPAN;
         require CPAN::Shell;
 
+        open my $fh, '>', File::Spec->devnull();
+
         {
-            local $@;
-            eval $monkey_patch;
-            die $@ if $@;
+            no warnings 'redefine';
+            *CPAN::Shell::report_fh = sub { $fh };
         }
 
         $CPAN::Be_Silent = 1;
@@ -542,10 +514,14 @@ EOF
         $CPAN::Config->{test_report} = 0;
         $CPAN::Config->{mbuildpl_arg} .= ' --quiet';
         $CPAN::Config->{prerequisites_policy} = 'follow';
-        $CPAN::Config->{make_install_make_command}    =~ s/^sudo //;
+        $CPAN::Config->{make_install_make_command} =~ s/^sudo //;
         $CPAN::Config->{mbuild_install_build_command} =~ s/^sudo //;
-        $CPAN::Config->{make_install_arg}             =~ s/UNINST=1//;
-        $CPAN::Config->{mbuild_install_arg}           =~ s /--uninst\s+1//;
+        $CPAN::Config->{make_install_arg} =~ s/UNINST=1//;
+        $CPAN::Config->{mbuild_install_arg} =~ s /--uninst\s+1//;
+
+        if ( $ENV{PERL_TEST_DM_CPAN_VERBOSE} ) {
+            $fh = io_from_write_cb( sub { Test::More::diag( $_[0] ) } );
+        }
 
         $LOADED_CPAN = 1;
 
@@ -567,22 +543,22 @@ Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.17
+version 0.18
 
 =head1 SYNOPSIS
 
-  use Test::DependentModules qw( test_all_dependents );
+    use Test::DependentModules qw( test_all_dependents );
 
-  test_all_dependents('My::Module');
+    test_all_dependents('My::Module');
 
-  # or ...
+    # or ...
 
-  use Test::DependentModules qw( test_module );
-  use Test::More tests => 3;
+    use Test::DependentModules qw( test_module );
+    use Test::More tests => 3;
 
-  test_module('Exception::Class');
-  test_module('DateTime');
-  test_module('Log::Dispatch');
+    test_module('Exception::Class');
+    test_module('DateTime');
+    test_module('Log::Dispatch');
 
 =head1 DESCRIPTION
 
@@ -712,7 +688,7 @@ Dave Rolsky <autarch@urth.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is Copyright (c) 2013 by Dave Rolsky.
+This software is Copyright (c) 2014 by Dave Rolsky.
 
 This is free software, licensed under:
 
