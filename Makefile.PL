@@ -33,7 +33,7 @@ my %WriteMakefileArgs = (
     "IO::Handle::Util" => 0,
     "IPC::Run3" => 0,
     "Log::Dispatch" => 0,
-    "MetaCPAN::API" => 0,
+    "MetaCPAN::Client" => 0,
     "Test::Builder" => 0,
     "Try::Tiny" => 0,
     "autodie" => 0,
@@ -48,7 +48,7 @@ my %WriteMakefileArgs = (
     "Module::Build::Tiny" => 0,
     "Test::More" => "0.88"
   },
-  "VERSION" => "0.18",
+  "VERSION" => "0.19",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -71,7 +71,7 @@ my %FallbackPrereqs = (
   "IO::Handle::Util" => 0,
   "IPC::Run3" => 0,
   "Log::Dispatch" => 0,
-  "MetaCPAN::API" => 0,
+  "MetaCPAN::Client" => 0,
   "Module::Build" => 0,
   "Module::Build::Tiny" => 0,
   "Test::Builder" => 0,

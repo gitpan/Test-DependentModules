@@ -2,7 +2,7 @@ NAME
     Test::DependentModules - Test all modules which depend on your module
 
 VERSION
-    version 0.18
+    version 0.19
 
 SYNOPSIS
         use Test::DependentModules qw( test_all_dependents );
@@ -52,7 +52,7 @@ FUNCTIONS
     This module optionally exports three functions:
 
   test_all_dependents( $module, { exclude => qr/.../ } )
-    Given a module name, this function uses MetaCPAN::API to find all its
+    Given a module name, this function uses MetaCPAN::Client to find all its
     dependencies and test them. It will set a test plan for you.
 
     If you want to exclude some dependencies, you can pass a regex which
