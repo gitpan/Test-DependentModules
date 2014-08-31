@@ -1,5 +1,7 @@
 package Test::DependentModules;
-$Test::DependentModules::VERSION = '0.19';
+# git description: v0.19-7-g18be0e4
+$Test::DependentModules::VERSION = '0.20';
+
 use strict;
 use warnings;
 use autodie;
@@ -61,10 +63,12 @@ sub _get_deps {
 
     my @deps;
     while ( my $dep = $rev_deps->next ) {
-        next unless $allow->($dep);
-        next if $dep =~ /^(?:Task|Bundle)/;
+        my $dist = $dep->distribution;
 
-        push @deps => $dep;
+        next unless $allow->($dist);
+        next if $dist =~ /^(?:Task|Bundle)/;
+
+        push @deps => $dist;
     }
 
     return @deps;
@@ -519,13 +523,15 @@ __END__
 
 =pod
 
+=encoding UTF-8
+
 =head1 NAME
 
 Test::DependentModules - Test all modules which depend on your module
 
 =head1 VERSION
 
-version 0.19
+version 0.20
 
 =head1 SYNOPSIS
 
